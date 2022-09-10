@@ -13,7 +13,7 @@ func GetClient() *ethclient.Client {
 		return client
 	}
 
-	rpcUrl := "https://rpc-mumbai.maticvigil.com"
+	rpcUrl := "https://matic-mumbai.chainstacklabs.com"
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
 		log.Fatalf("failed to dial rpc url %v", rpcUrl)

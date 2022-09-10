@@ -17,10 +17,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
 	"npm3/cli/common"
 	"os"
+	"path/filepath"
+	"strings"
 
+	ipfsShell "github.com/ipfs/go-ipfs-api"
 	"github.com/spf13/cobra"
 )
 
@@ -34,27 +39,87 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: runInstallCmd,
+	Run:     runInstallCmd,
+	Aliases: []string{"i"},
 }
 
 func runInstallCmd(cmd *cobra.Command, args []string) {
+	err := os.Mkdir("node_modules", 755)
+	if err != nil {
+		cmd.PrintErrln(err.Error())
+		os.Exit(1)
+	}
 	cmd.Println("Connecting To RPC Node")
 	client := common.GetClient()
 	cmd.Println("Connecting To Smart Contract")
 	pkgMng := common.GetPackageManagerInstance(client)
 	cmd.Println("Getting latest package version")
-	res, err := pkgMng.NameToPackage(nil, args[0])
+	pkgName := args[0]
+	res, err := pkgMng.NameToPackage(nil, pkgName)
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
 	cmd.Println("Fetching latest package release")
-	dataHash, err := pkgMng.GetRelease(nil, args[0], res.DefaultVersion)
+	dataHash, err := pkgMng.GetRelease(nil, pkgName, res.DefaultVersion)
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("data hash is", dataHash)
+	// ipfs := ipfsShell.NewLocalShell()
+	ipfs := ipfsShell.NewShell("http://localhost:5001")
+	tempDir, err := os.MkdirTemp("", "npm3-*")
+	if err != nil {
+		cmd.PrintErrln(err.Error())
+		os.Exit(1)
+	}
+	err = ipfs.Get(dataHash, tempDir)
+	if err != nil {
+		cmd.PrintErrln(err.Error())
+		os.Exit(1)
+	}
+	archive, err := zip.OpenReader(filepath.Join(tempDir, dataHash))
+	if err != nil {
+		cmd.PrintErrln(err.Error())
+		os.Exit(1)
+	}
+	defer archive.Close()
+	os.Mkdir("node_modules", os.ModeDevice)
+	dst := fmt.Sprintf("node_modules/%s", pkgName)
+	for _, f := range archive.File {
+		filePath := filepath.Join(dst, f.Name)
+
+		if !strings.HasPrefix(filePath, filepath.Clean(dst)+string(os.PathSeparator)) {
+			return
+		}
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(filePath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+			panic(err)
+		}
+
+		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			panic(err)
+		}
+
+		fileInArchive, err := f.Open()
+		if err != nil {
+			panic(err)
+		}
+
+		if _, err := io.Copy(dstFile, fileInArchive); err != nil {
+			panic(err)
+		}
+
+		dstFile.Close()
+		fileInArchive.Close()
+	}
+	cmd.Println("Installed")
+
 }
 func init() {
 	rootCmd.AddCommand(installCmd)
