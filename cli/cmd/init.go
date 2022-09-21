@@ -17,27 +17,30 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"encoding/json"
+	"npm3/cli/types"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "dpm3",
-	Short: "A Decentralized Package Manager",
-	Long: `A Decentralized Package Manager 
-	Packages are stored in IPFS and addressed in immutable mapping 
-	in smart contract
-	`,
+// initCmd represents the init command
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Init dpm project",
+	Long:  `Creates package.json`,
+	Run:   DpmInit,
 }
 
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+func DpmInit(cmd *cobra.Command, args []string) {
+	pkgName := args[0]
+	pkgJson := types.NewBasicPkgJson(pkgName)
+	jsonBytes, _ := json.MarshalIndent(pkgJson, "", "  ")
+	f, _ := os.Create("package.json")
+	f.Write(jsonBytes)
+	f.Close()
 }
 
 func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.AddCommand(initCmd)
 }

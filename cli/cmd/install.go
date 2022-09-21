@@ -18,37 +18,30 @@ package cmd
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"npm3/cli/common"
+	"npm3/cli/types"
 	"os"
 	"path/filepath"
 	"strings"
 
-	ipfsShell "github.com/ipfs/go-ipfs-api"
 	"github.com/spf13/cobra"
 )
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "install",
+	Short:   "Install package",
+	Long:    `Installs package, for e.g. dpm i packageABC`,
 	Run:     runInstallCmd,
 	Aliases: []string{"i"},
 }
 
 func runInstallCmd(cmd *cobra.Command, args []string) {
-	err := os.Mkdir("node_modules", 755)
-	if err != nil {
-		cmd.PrintErrln(err.Error())
-		os.Exit(1)
-	}
+	os.Mkdir("node_modules", 755)
 	cmd.Println("Connecting To RPC Node")
 	client := common.GetClient()
 	cmd.Println("Connecting To Smart Contract")
@@ -60,31 +53,34 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
-	cmd.Println("Fetching latest package release")
 	dataHash, err := pkgMng.GetRelease(nil, pkgName, res.DefaultVersion)
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
-	// ipfs := ipfsShell.NewLocalShell()
-	ipfs := ipfsShell.NewShell("http://localhost:5001")
 	tempDir, err := os.MkdirTemp("", "npm3-*")
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
-	err = ipfs.Get(dataHash, tempDir)
+	out, err := os.Create(filepath.Join(tempDir, dataHash))
+	defer out.Close()
+	gateway := "https://ipfs.io/ipfs"
+	url := fmt.Sprintf("%s/%s", gateway, dataHash)
+	cmd.Println("Downloading release", res.DefaultVersion)
+	resp, err := http.Get(url)
+	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
+	defer resp.Body.Close()
 	archive, err := zip.OpenReader(filepath.Join(tempDir, dataHash))
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
 	defer archive.Close()
-	os.Mkdir("node_modules", os.ModeDevice)
 	dst := fmt.Sprintf("node_modules/%s", pkgName)
 	for _, f := range archive.File {
 		filePath := filepath.Join(dst, f.Name)
@@ -118,19 +114,18 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 		dstFile.Close()
 		fileInArchive.Close()
 	}
+	pkgJsonBytes, _ := os.ReadFile("package.json")
+	var pkgJson types.PackageJSON
+	json.Unmarshal(pkgJsonBytes, &pkgJson)
+	if pkgJson.Dependencies == nil {
+		pkgJson.Dependencies = make(map[string]string)
+	}
+	pkgJson.Dependencies["pkgName"] = res.DefaultVersion
+	pkgJsonBytes, _ = json.MarshalIndent(pkgJson, "", "  ")
+	os.WriteFile("package.json", pkgJsonBytes, 666)
 	cmd.Println("Installed")
 
 }
 func init() {
 	rootCmd.AddCommand(installCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// installCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// installCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
