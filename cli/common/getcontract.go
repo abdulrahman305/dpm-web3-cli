@@ -9,7 +9,7 @@ import (
 )
 
 func GetPackageManagerInstance(client *ethclient.Client) *packagemanager.Packagemanager {
-	blocklistAddressHex := "0x081c78BDcFa10391862E44215543d2B8F3211c92"
+	blocklistAddressHex := "0x8c6C2BdAf20368a794BcB2A7E0953EAa56Cf2a9F"
 	addr := common.HexToAddress(blocklistAddressHex)
 	var err error
 	instance, err := packagemanager.NewPackagemanager(addr, client)
