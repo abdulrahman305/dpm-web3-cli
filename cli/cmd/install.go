@@ -120,7 +120,7 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 	if pkgJson.Dependencies == nil {
 		pkgJson.Dependencies = make(map[string]string)
 	}
-	pkgJson.Dependencies["pkgName"] = res.DefaultVersion
+	pkgJson.Dependencies[pkgName] = res.DefaultVersion
 	pkgJsonBytes, _ = json.MarshalIndent(pkgJson, "", "  ")
 	os.WriteFile("package.json", pkgJsonBytes, 666)
 	cmd.Println("Installed")
