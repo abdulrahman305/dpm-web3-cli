@@ -1,4 +1,4 @@
-module npm3
+module dpm3
 
 go 1.19
 

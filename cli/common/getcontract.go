@@ -1,8 +1,8 @@
 package common
 
 import (
+	"dpm3/cli/generated/packagemanager"
 	"log"
-	"npm3/cli/generated/packagemanager"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

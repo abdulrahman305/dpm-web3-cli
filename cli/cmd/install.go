@@ -18,12 +18,12 @@ package cmd
 
 import (
 	"archive/zip"
+	"dpm3/cli/common"
+	"dpm3/cli/types"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"npm3/cli/common"
-	"npm3/cli/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +46,7 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 	client := common.GetClient()
 	cmd.Println("Connecting To Smart Contract")
 	pkgMng := common.GetPackageManagerInstance(client)
-	cmd.Println("Getting latest package version")
+	cmd.Println("Getting package details")
 	pkgName := args[0]
 	res, err := pkgMng.NameToPackage(nil, pkgName)
 	if err != nil {
@@ -58,7 +58,7 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)
 	}
-	tempDir, err := os.MkdirTemp("", "npm3-*")
+	tempDir, err := os.MkdirTemp("", "dpm3-*")
 	if err != nil {
 		cmd.PrintErrln(err.Error())
 		os.Exit(1)

@@ -17,8 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"dpm3/cli/types"
 	"encoding/json"
-	"npm3/cli/types"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -33,6 +33,10 @@ var initCmd = &cobra.Command{
 }
 
 func DpmInit(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		cmd.PrintErrln("package name not specified")
+		os.Exit(1)
+	}
 	pkgName := args[0]
 	pkgJson := types.NewBasicPkgJson(pkgName)
 	jsonBytes, _ := json.MarshalIndent(pkgJson, "", "  ")
