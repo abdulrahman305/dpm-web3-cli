@@ -41,7 +41,7 @@ var installCmd = &cobra.Command{
 }
 
 func runInstallCmd(cmd *cobra.Command, args []string) {
-	os.Mkdir("node_modules", 755)
+	os.Mkdir("node_modules", 0777)
 	cmd.Println("Connecting To RPC Node")
 	client := common.GetClient()
 	cmd.Println("Connecting To Smart Contract")
@@ -114,7 +114,11 @@ func runInstallCmd(cmd *cobra.Command, args []string) {
 		dstFile.Close()
 		fileInArchive.Close()
 	}
-	pkgJsonBytes, _ := os.ReadFile("package.json")
+	pkgJsonBytes, err := os.ReadFile("package.json")
+	if err != nil {
+		cmd.PrintErrln(err.Error())
+		os.Exit(1)
+	}
 	var pkgJson types.PackageJSON
 	json.Unmarshal(pkgJsonBytes, &pkgJson)
 	if pkgJson.Dependencies == nil {
